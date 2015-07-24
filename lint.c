@@ -14,9 +14,6 @@
 //lint multiplication algorithm switch constant
 #define KARATSUBA_SPLIT 50
 
-//swap macro
-#define swap(T,a,b) { T t=a; a=b; b=t; }
-
 //lint data structure
 typedef struct {
 	char *digits;
@@ -231,7 +228,11 @@ lint **splitI(lint *n,int l) {
 //returns new lint with product of lint a and b, assumed trimmed and +ve
 lint *_kmultiplicationI(lint *a,lint *b) {
 	lint *tmp1=shrinkI(a),*tmp2=shrinkI(b),*tmp3,*tmp4,*tmp5;
-	if(_compareI(tmp1,tmp2)==LESS) swap(lint *,tmp1,tmp2);
+	if(_compareI(tmp1,tmp2)==LESS) {
+		tmp3=tmp2;
+		tmp2=tmp1;
+		tmp1=tmp3;
+	}
 	if(tmp2->length<KARATSUBA_SPLIT) {
 		tmp3=_multiplicationI(tmp1,tmp2);
 		tmp4=shrinkI(tmp3);
@@ -283,31 +284,32 @@ lint *_kmultiplicationI(lint *a,lint *b) {
 }
 
 //returns new lint array with quotient and remainder of lint a and b, assumed trimmed and +ve
+//note: division by 0 returns 0 as quotient and remainder
 lint **_divisionI(lint *a,lint *b) {
-	lint *quo=createI(1),*div=createI(1),*tmp1,*tmp2,*tmp3,*tmp4;
+	lint **res=(lint**)malloc(2*sizeof(lint*)),*quo=createI(1),*div=createI(1),*tmp1,*tmp2,*tmp3,*tmp4;
 	int i;
-	for(i=0;i<a->length;++i) {
-		tmp1=shiftI(quo,1);
-		tmp2=shrinkI(tmp1);
-		tmp3=shiftI(div,1);
-		tmp4=shrinkI(tmp3);
-		deleteI(quo);
-		deleteI(tmp1);
-		deleteI(div);
-		deleteI(tmp3);
-		quo=tmp2;
-		div=tmp4;
-		div->digits[0]=a->digits[a->length-1-i];
-		while(_compareI(div,b)!=LESS) {
-			tmp1=_subtractionI(div,b);
+	if(_compareI(b,div)==GREATER)
+		for(i=0;i<a->length;++i) {
+			tmp1=shiftI(quo,1);
 			tmp2=shrinkI(tmp1);
+			tmp3=shiftI(div,1);
+			tmp4=shrinkI(tmp3);
+			deleteI(quo);
 			deleteI(tmp1);
 			deleteI(div);
-			div=tmp2;
-			quo->digits[0]++;
+			deleteI(tmp3);
+			quo=tmp2;
+			div=tmp4;
+			div->digits[0]=a->digits[a->length-1-i];
+			while(_compareI(div,b)!=LESS) {
+				tmp1=_subtractionI(div,b);
+				tmp2=shrinkI(tmp1);
+				deleteI(tmp1);
+				deleteI(div);
+				div=tmp2;
+				quo->digits[0]++;
+			}
 		}
-	}
-	lint **res=(lint**)malloc(2*sizeof(lint*));
 	*res=quo;
 	*(res+1)=div;
 	return res;

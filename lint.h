@@ -6,7 +6,6 @@
 #define GREATER 1
 #define EQUAL 0
 #define LESS -1
-#define swap(T,a,b) { T t=a; a=b; b=t; }
 #define KARATSUBA_SPLIT 50
 
 typedef struct {

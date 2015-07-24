@@ -100,8 +100,8 @@ loat *padF(loat *n,int l) {
 	if(l<newn->mantissa->length) return newn;
 	char *newdigits=(char*)malloc(l*sizeof(char));
 	int i;
-	for(i=n->mantissa->length-1;i>=0;--i)
-		newdigits[i-newn->mantissa->length+l]=newn->mantissa->digits[i];
+	for(i=newn->mantissa->length-1;i>=0;--i) newdigits[i-newn->mantissa->length+l]=newn->mantissa->digits[i];
+	for(i=l-newn->mantissa->length-1;i>=0;--i) newdigits[i]=0;
 	free(newn->mantissa->digits);
 	newn->mantissa->digits=newdigits;
 	newn->exponent+=n->mantissa->length-l;
@@ -120,8 +120,7 @@ void printF(loat *n) {
 
 //deletes loat n
 void deleteF(loat *n) {
-	free(n->mantissa->digits);
-	free(n->mantissa);
+	deleteI(n->mantissa);
 	free(n);
 }
 
@@ -138,8 +137,8 @@ char _compareF(loat *a,loat *b) {
 	if(b->mantissa->length+b->exponent>a->mantissa->length+a->exponent) return LESS;
 	int i;
 	for(i=0;(i<a->mantissa->length)&&(i<b->mantissa->length);++i)
-		if(a->mantissa->digits[a->mantissa->length-i]>b->mantissa->digits[b->mantissa->length-i]) return GREATER;
-		else if(a->mantissa->digits[a->mantissa->length-i]<b->mantissa->digits[b->mantissa->length-i]) return LESS;
+		if(a->mantissa->digits[a->mantissa->length-i-1]>b->mantissa->digits[b->mantissa->length-i-1]) return GREATER;
+		else if(a->mantissa->digits[a->mantissa->length-i-1]<b->mantissa->digits[b->mantissa->length-i-1]) return LESS;
 	if(a->mantissa->length>b->mantissa->length) return GREATER;
 	if(b->mantissa->length>a->mantissa->length) return LESS;
 	return EQUAL;
@@ -147,6 +146,22 @@ char _compareF(loat *a,loat *b) {
 
 //returns comparison of loat a and b, assumed trimmed
 char compareF(loat *a,loat *b) {
+	lint *zero=createI(1);
+	if((_compareI(a->mantissa,zero)==EQUAL)&&(_compareI(b->mantissa,zero)==EQUAL)) {
+		deleteI(zero);
+		return EQUAL;
+	}
+	if(_compareI(a->mantissa,zero)==EQUAL) {
+		deleteI(zero);
+		if(b->mantissa->sign==PLUS) return LESS;
+		else return GREATER;
+	}
+	if(_compareI(b->mantissa,zero)==EQUAL) {
+		deleteI(zero);
+		if(a->mantissa->sign==MINUS) return LESS;
+		else return GREATER;
+	}
+	deleteI(zero);
 	if(a->mantissa->sign==PLUS)
 		if(b->mantissa->sign==MINUS) return GREATER;
 		else return _compareF(a,b);
@@ -165,13 +180,11 @@ loat *_additionF(loat *a,loat *b) {
 	lint *msum;
 	if(a->exponent>b->exponent) {
 		sum=alignF(a,b->exponent);
-		sum->exponent=b->exponent;
 		if(b->mantissa->length>sum->mantissa->length) msum=_additionI(b->mantissa,sum->mantissa);
 		else msum=_additionI(sum->mantissa,b->mantissa);
 	}
 	else {
 		sum=alignF(b,a->exponent);
-		sum->exponent=a->exponent;
 		if(a->mantissa->length>sum->mantissa->length) msum=_additionI(a->mantissa,sum->mantissa);
 		else msum=_additionI(sum->mantissa,a->mantissa);
 	}
@@ -186,14 +199,12 @@ loat *_subtractionF(loat *a,loat *b) {
 	lint *mdiff;
 	if(a->exponent>b->exponent) {
 		diff=alignF(a,b->exponent);
-		diff->exponent=b->exponent;
-		if(b->mantissa->length>diff->mantissa->length) mdiff=_subtractionI(b->mantissa,diff->mantissa);
+		if(_compareI(b->mantissa,diff->mantissa)==GREATER) mdiff=_subtractionI(b->mantissa,diff->mantissa);
 		else mdiff=_subtractionI(diff->mantissa,b->mantissa);
 	}
 	else {
 		diff=alignF(b,a->exponent);
-		diff->exponent=a->exponent;
-		if(a->mantissa->length>diff->mantissa->length) mdiff=_subtractionI(a->mantissa,diff->mantissa);
+		if(_compareI(a->mantissa,diff->mantissa)==GREATER) mdiff=_subtractionI(a->mantissa,diff->mantissa);
 		else mdiff=_subtractionI(diff->mantissa,a->mantissa);
 	}
 	deleteI(diff->mantissa);
@@ -210,7 +221,7 @@ loat *_kmultiplicationF(loat *a,loat *b) {
 	return prod;
 }
 
-//returns new loat array with quotient and remainder of loat a and b, assumed trimmed and +ve
+//returns new loat array with quotient and remainder of loat a and b accurate to p digits, assumed trimmed and +ve
 loat *_divisionF(loat *a,loat *b,int p) {
 	loat *quo=(loat*)malloc(sizeof(loat)),*pad=padF(a,p+b->mantissa->length);
 	lint **res=_divisionI(pad->mantissa,b->mantissa);
@@ -238,6 +249,21 @@ loat *additionF(loat *a,loat *b) {
 
 //returns new loat with difference of loat a and b, assumed trimmed
 loat *subtractionF(loat *a,loat *b) {
+	lint *zero=createI(1);
+	if((_compareI(a->mantissa,zero)==EQUAL)&&(_compareI(b->mantissa,zero)==EQUAL)) {
+		deleteI(zero);
+		return createF(1);
+	}
+	if(_compareI(a->mantissa,zero)==EQUAL) {
+		deleteI(zero);
+		loat *diff=cloneF(b);
+		return negateF(diff);
+	}
+	if(_compareI(b->mantissa,zero)==EQUAL) {
+		deleteI(zero);
+		return cloneF(a);
+	}
+	deleteI(zero);
 	if(a->mantissa->sign==PLUS)
 		if(b->mantissa->sign==MINUS) return _additionF(a,b);
 		else
@@ -256,7 +282,7 @@ loat *multiplicationF(loat *a,loat *b) {
 	return negateF(_kmultiplicationF(a,b));
 }
 
-//returns new loat array with quotient and remainder of loat a and b, assumed trimmed
+//returns new loat array with quotient and remainder of loat a and b accurate to p digits, assumed trimmed
 loat *divisionF(loat *a,loat *b,int p) {
 	loat *quo=_divisionF(a,b,p);
 	if(a->mantissa->sign==b->mantissa->sign) quo->mantissa->sign=PLUS;
